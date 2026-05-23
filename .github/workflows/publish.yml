@@ -1,0 +1,30 @@
+name: Publish Sokuri Korea Post
+on:
+  push:
+    paths:
+      - 'content/posts/**/index.md'
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Activate Hermes venv
+        run: source $HOME/.hermes/hermes-agent/venv/bin/activate
+
+      - name: Determine slug
+        id: slug
+        run: |
+          SLUG=$(git diff --name-only ${{ github.sha }}^ ${{ github.sha }} \
+                 | grep '^content/posts/' | cut -d'/' -f3)
+          echo "slug=$SLUG" >> $GITHUB_OUTPUT
+
+      - name: Run publish skill
+        run: |
+          hermes skill run sokuri-korea/blog-publish --context "slug=${{ steps.slug.outputs.slug }}"
+
+      - name: Notify result
+        if: always()
+        run: |
+          URL="https://korea.sk-sokuri.com/posts/${{ steps.slug.outputs.slug }}/"
+          hermes send --message "✅ 게시 완료: $URL"
